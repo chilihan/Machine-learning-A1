@@ -5,7 +5,7 @@
 import time
 import autograd.numpy as np  # Thinly-wrapped numpy
 from autograd import multigrad
-
+import tensorflow as tf
 import pickle
 import matplotlib.pyplot as plt
 
@@ -21,7 +21,9 @@ eps = np.finfo(np.double).eps  # -- a small number
 def load_evergreen(dtype=dtype):
     with open('evergreen.pkl') as f:
         train_set, val_set, test_set = pickle.load(f)
+    # print train_set, val_set, test_set
     train_X, train_y = train_set
+    # print train_set
     val_X, val_y = val_set
 
     return (train_X.astype(dtype), train_y.astype('int8'),
@@ -61,6 +63,7 @@ def mlp_cost(X, y, W_hid, b_hid, W_out, b_out):
     # hidden activations
     act_hid = p_y_given_x(W_hid, b_hid, X)
     # output activation
+
     act_out = p_y_given_x(W_out, b_out, act_hid)
     return cross_entropy(y, act_out).mean(axis=0)
 
@@ -69,7 +72,6 @@ def mlp_predict(X, W_hid, b_hid, W_out, b_out):
     act_hid = p_y_given_x(W_hid, b_hid, X)
     act_out = p_y_given_x(W_out, b_out, act_hid)
     return act_out > 0.5
-
 
 def initialize_model(n_inputs, n_hidden, dtype=dtype):
     W_hid = uniform(low=-4 * np.sqrt(6.0 / (n_inputs + n_hidden)),
@@ -80,138 +82,36 @@ def initialize_model(n_inputs, n_hidden, dtype=dtype):
     # now allocate the logistic regression model at the top
     W_out = uniform(low=-4 * np.sqrt(6.0 / (n_inputs + n_hidden)),
                     high=4 * np.sqrt(6.0 / (n_inputs + n_hidden)),
-                    size=(n_hidden,)).astype(dtype)
+                    size=(n_hidden, )).astype(dtype)
     b_out = np.array(0.0)
 
     return W_hid, b_hid, W_out, b_out
 
 
+# dyout/dzout = y_out * (1 - y_out)
+def sigmaprime(x):
+    return tf.mul(logistic(x), tf.sub(tf.constant(1.0), logistic(x)))
+
+
 def my_grads(X, y, W_hid, b_hid, W_out, b_out):
-    # print("------------------------------")
-    #
-    # print("X:",X,X.shape)
-    # print ("this is x:", X[1],X[1].shape)
+    print("------------------------------")
+
+    print("X:",X,X.shape)
+    print ("this is x:", X[1],X[1].shape)
     d = X.shape[1] #shape =36
     samplesize = X.shape[0] #shape = 6500
-    #samplesize = 20
     hidu = len(W_out) #shape = 100
     dE_dWout = np.zeros(hidu) #shape = (100,)
     dE_dWhid = np.zeros((d,hidu)) #shape  = (36,100)
 
-    dE_dbout = 0 #()
-    dE_dbhid = np.zeros((100,))
-    # dE_dbhid = np.zeros()
 
-    #
-    # #test dE_dWout
-    # x = X[0] #(36,)
-    # print ("x:",x.shape)
-    # ytrue = y[0] #()
-    # print ("ytrue:",ytrue.shape)
-    # y_hid = p_y_given_x(W_hid, b_hid, x) #(100,)
-    # y_out = p_y_given_x(W_out, b_out, y_hid) #shape = ()
-    #
-    # print ("yhid:",y_hid,y_hid.shape)
-    #
-    #
-    #
-    # dE_dyout = np.divide(ytrue, y_out) #()
-    # print ("dedout:", dE_dyout, dE_dyout.shape)
-    #
-    # dyout_dzout = np.multiply(np.subtract(1,y_out), y_out) # ()
-    # dE_dzout = np.multiply(dE_dyout,dyout_dzout) #()
-    # print ("dyout_dzout:", dyout_dzout,dyout_dzout.shape)
-    # print ("dE_dzout:", dE_dzout,dE_dzout.shape)
-    #
-    # dE_dWoutchange = np.multiply(dE_dzout,y_hid) #(100,)
-    # dE_dWout = np.add(dE_dWout, dE_dWoutchange) #(100,)+(100,)=(100,)
-    # print ("dE_dWoutchange:", dE_dWoutchange, dE_dWoutchange.shape)
-    # print ("dE_dWout:", dE_dWout,dE_dWout.shape)
-    #
-    # #test dE_dWhid
-    # dzout_dyhid = W_out #(100,)
-    # print ("dzout_dyhid:", dzout_dyhid,dzout_dyhid.shape)
-    #
-    # yhid_1 = 1-y_hid #(100,)
-    # print ("1_yhid", yhid_1,yhid_1.shape)
-    # dyhid_dzhid = y_hid*yhid_1  #(100,)
-    # print ("dyhid_dzhid:",dyhid_dzhid,dyhid_dzhid.shape)
-    #
-    # #dzo/dyh * dyh/dzh = dzo/dzh
-    # dzout_dzhid = dzout_dyhid * dyhid_dzhid
-    # dE_dzhid = dE_dzout * np.array(dzout_dzhid)
-    # print ("dzout_dzhid:",dzout_dzhid,dzout_dzhid.shape)
-    # print ("dE_dzhid:",dE_dzhid,dE_dzhid.shape)
-    #
-    # dE_dzhid_mat = np.reshape(dE_dzhid,(1,len(dE_dzhid)))
-    # print ("dE_dzhid_vec:",dE_dzhid_mat,dE_dzhid_mat.shape)
-    # x_vec = np.reshape(x,(len(x),1))
-    # print("x_vec:",x_vec,x_vec.shape)
-    # dE_dWhidchange = np.dot(x_vec,dE_dzhid_mat) #(36, 100)
-    # print("dE_dWhidchange:",dE_dWhidchange,dE_dWhidchange.shape)
-    # dE_dWhid = np.add(dE_dWhid,dE_dWhidchange)
-    # print ("dE_dWhid:",dE_dWhid,dE_dWhid.shape)
-    # dE_dWhid = (1.0/(samplesize))*np.array(dE_dWhid)
-    # dE_dWout = (1.0/(samplesize))*np.array(dE_dWout)
-
-
-
-    # print ("dyh_dzh",dyhdzh, dyhdzh.shape)
-
-
-
-    #loop
     for i in range(samplesize):
-        # output to hidden layer
-        x = X[i] # shape = (36,)
-        dzhid_dWhid = X[i] #(36,)
-        dzout_dyhid = W_out #
+        x = X[i] #shape = (36,)
         ytrue = y[i] #shape = ()
         y_hid = p_y_given_x(W_hid, b_hid, x) #shape = (100,)
-        y_out =p_y_given_x(W_out,b_out, y_hid) #shape = ()
-
-        ## first calculate dE/dE_dWout
-        part1 = np.divide(np.subtract(1,ytrue),np.add(np.subtract(1,y_out),eps))
-        part2 = np.divide(ytrue,np.add(y_out,eps))
-        dE_dyout = -1*(part1-part2)
-
-
-
-        #dE_dyout = np.subtract(np.divide(ytrue, y_out),np.divide(np.subtract(1,ytrue),np.subtract(1,y_out)))
-        dyout_dzout = np.multiply(np.subtract(1,y_out), y_out)
-        dE_dzout = np.multiply(dE_dyout,dyout_dzout)
-        dE_dWoutchange = np.multiply(dE_dzout,y_hid) #(100,)
-        dE_dWout = np.subtract(dE_dWout, dE_dWoutchange) #(100,)+(100,)=(100,)
-
-        # output to hidden layer bias gradient
-        dE_dboutchange = dE_dzout
-        dE_dbout = np.subtract(dE_dbout, dE_dboutchange)
-        #dE_dbout =(1.0/samplesize)*dE_dbout
-
-
-        # hidden layer to input
-        x = X[i] #shape = (36,)
-        dzout_dyhid = W_out #(100,)
-        yhid_1 = 1-y_hid  #(100,)
-        dyhid_dzhid = y_hid*yhid_1  #(100,)
-        dzout_dzhid = dzout_dyhid * dyhid_dzhid  #(100,); dzo/dyh * dyh/dzh =dzo/dzh
-        dE_dzhid = dE_dzout * np.array(dzout_dzhid) #(100,)
-        dE_dzhid_mat = np.reshape(dE_dzhid,(1,len(dE_dzhid))) #(1, 100)
-        x_vec = np.reshape(x,(len(x),1)) #(36, 1)
-        dE_dWhidchange = np.dot(x_vec,dE_dzhid_mat) #(36, 100)
-        dE_dWhid = np.subtract(dE_dWhid,dE_dWhidchange) #(36, 100)
-
-        # hidden layer to output layer bias gradient
-        dE_dbhidchange = dE_dzhid
-        dE_dbhid = np.subtract(dE_dbhid, dE_dbhidchange)
-
-
-    dE_dWhid = (1.0/(samplesize))*np.array(dE_dWhid)
-    dE_dWout = (1.0/(samplesize))*np.array(dE_dWout)
-    dE_dbout =(1.0/samplesize)*dE_dbout
-    dE_dbhid = (1.0/samplesize)*dE_dbhid
-    return dE_dWhid,dE_dbhid , dE_dWout, dE_dbout
-
+        y_out = p_y_given_x(W_out, b_out, y_hid） #shape = ()
+        # first calculate dE/dE_dWout
+        dE_dyout = np.
 
 
 
@@ -225,7 +125,6 @@ def check_gradients(cost_fn, grad_fn, X, y, W_hid, b_hid, W_out, b_out,
 
     grads_auto = auto_grad_fn(X, y, *weights)
     grads_manual = grad_fn(X, y, *weights)
-
     norms = [norm(auto_g - manual_g) for auto_g, manual_g in zip(grads_auto,
                                                                  grads_manual)]
     ret = True
@@ -344,7 +243,6 @@ if __name__ == '__main__':
 
     # swap the lines below once you have implemented my_grads
     grad_fn = my_grads
-
     #grad_fn = None
 
     epochs = 250
