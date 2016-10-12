@@ -173,7 +173,7 @@ def my_grads(X, y, W_hid, b_hid, W_out, b_out):
         ## first calculate dE/dE_dWout
         part1 = np.divide(np.subtract(1,ytrue),np.add(np.subtract(1,y_out),eps))
         part2 = np.divide(ytrue,np.add(y_out,eps))
-        dE_dyout = -1*(part1-part2)
+        dE_dyout = (part1-part2)
 
 
 
@@ -181,11 +181,11 @@ def my_grads(X, y, W_hid, b_hid, W_out, b_out):
         dyout_dzout = np.multiply(np.subtract(1,y_out), y_out)
         dE_dzout = np.multiply(dE_dyout,dyout_dzout)
         dE_dWoutchange = np.multiply(dE_dzout,y_hid) #(100,)
-        dE_dWout = np.subtract(dE_dWout, dE_dWoutchange) #(100,)+(100,)=(100,)
+        dE_dWout = np.add(dE_dWout, dE_dWoutchange) #(100,)+(100,)=(100,)
 
         # output to hidden layer bias gradient
         dE_dboutchange = dE_dzout
-        dE_dbout = np.subtract(dE_dbout, dE_dboutchange)
+        dE_dbout = np.add(dE_dbout, dE_dboutchange)
         #dE_dbout =(1.0/samplesize)*dE_dbout
 
 
@@ -199,11 +199,11 @@ def my_grads(X, y, W_hid, b_hid, W_out, b_out):
         dE_dzhid_mat = np.reshape(dE_dzhid,(1,len(dE_dzhid))) #(1, 100)
         x_vec = np.reshape(x,(len(x),1)) #(36, 1)
         dE_dWhidchange = np.dot(x_vec,dE_dzhid_mat) #(36, 100)
-        dE_dWhid = np.subtract(dE_dWhid,dE_dWhidchange) #(36, 100)
+        dE_dWhid = np.add(dE_dWhid,dE_dWhidchange) #(36, 100)
 
         # hidden layer to output layer bias gradient
         dE_dbhidchange = dE_dzhid
-        dE_dbhid = np.subtract(dE_dbhid, dE_dbhidchange)
+        dE_dbhid = np.add(dE_dbhid, dE_dbhidchange)
 
 
     dE_dWhid = (1.0/(samplesize))*np.array(dE_dWhid)
